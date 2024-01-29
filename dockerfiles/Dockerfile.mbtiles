@@ -1,0 +1,11 @@
+FROM python:3.10-slim-bullseye
+
+RUN pip install --upgrade pip
+RUN pip install mbtiles-s3-server
+RUN pip install python-dotenv
+RUN apt-get -y update 
+RUN apt-get install -y libsqlite3-dev sqlite3
+
+EXPOSE 80
+
+CMD ["python","-m","mbtiles_s3_server"]

@@ -1,0 +1,45 @@
+default:
+  image: python:3.9
+
+#this needs to use docker-compose
+build-job:
+  stage: build
+  tags: 
+    - shell
+  script:
+    - cp .env.open .env
+    - docker-compose build
+
+deploy-job:
+  stage: deploy
+  tags:
+    - shell
+  rules: #only deploy on the master branch
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - HYPERVISOR=`lscpu | grep "^Hypervisor" | awk '{print $3}'`
+    #hypervisor is VMWare on JASMIN and KVM for Oracle 
+    - if [ "$HYPERVISOR" = "VMware" ] ; then
+    - docker push docker-repo.bodc.me/oceaninfo/imfe-pilot/titiler-uvicorn:latest
+    - docker push docker-repo.bodc.me/oceaninfo/imfe-pilot/mbtiles:latest
+    - ssh web 'docker pull docker-repo.bodc.me/oceaninfo/imfe-pilot/titiler-uvicorn:latest'
+    - ssh web 'docker pull docker-repo.bodc.me/oceaninfo/imfe-pilot/mbtiles:latest'
+    - else
+    #push to oracle container registry 
+    - docker tag docker-repo.bodc.me/oceaninfo/imfe-pilot/titiler-uvicorn:latest uk-london-1.ocir.io/lrl8vbuxj1ma/tileserver:latest
+    - docker push uk-london-1.ocir.io/lrl8vbuxj1ma/tileserver:latest
+    - docker tag docker-repo.bodc.me/oceaninfo/imfe-pilot/mbtiles:latest uk-london-1.ocir.io/lrl8vbuxj1ma/mbtiles:latest
+    - docker push uk-london-1.ocir.io/lrl8vbuxj1ma/mbtiles:latest
+    - ssh web 'docker pull uk-london-1.ocir.io/lrl8vbuxj1ma/tileserver:latest ; docker tag uk-london-1.ocir.io/lrl8vbuxj1ma/tileserver:latest docker-repo.bodc.me/oceaninfo/imfe-pilot/titiler-uvicorn:latest'
+    - ssh web 'docker pull uk-london-1.ocir.io/lrl8vbuxj1ma/mbtiles:latest ; docker tag uk-london-1.ocir.io/lrl8vbuxj1ma/mbtiles:latest docker-repo.bodc.me/oceaninfo/imfe-pilot/mbtiles:latest'
+    - fi
+    - ssh web "mkdir -p ~/tileserver && cp .tiler-env tileserver/.env"
+     #copy everything because we mount it into our volume
+    - scp docker-compose.yml web:/home/gitlab-runner/tileserver
+    - scp -r dockerfiles web:/home/gitlab-runner/tileserver
+    - scp -r src web:/home/gitlab-runner/tileserver
+    - scp requirements.txt web:/home/gitlab-runner/tileserver
+    #- scp tileserver.tar.gz web:/home/gitlab-runner/tileserver
+    #- ssh web "cd tileserver && gunzip -c tileserver.tar.gz | docker load"
+    - ssh web 'cd tileserver && docker-compose stop && docker-compose up -d'
+     #note: this container relies on the .tiler-env file that is in gitlab-runner's home directory, which contains the encryption key

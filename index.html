@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Example map</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+       integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+       crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+       integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+       crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.bundled.js"></script>
+    <script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.js"></script>
+    <style>
+      body, html, #map {margin: 0; padding: 0; height: 100%; width: 100%}
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+    const mymap = L.map('map', { zoomControl: false }).setView([50, -8], 4);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 30,
+    }).addTo(mymap);
+    var vectorTileOptions = {
+      vectorTileLayerStyles: {
+        // A plain set of L.Path options.
+        Energy: {
+            weight: 1,
+            fillColor: '#cf52d3',
+            fillOpacity: 1,
+            fill: true
+        },
+        // all: {
+        //     weight: 1,
+        //     color: '#ce19d4',
+        //     fillColor: '#ce19d4',
+        //     fillOpacity: 0,
+        //     fill: true
+        // },
+
+        // A function for styling features dynamically, depending on their
+        // properties and the map's zoom level
+        all: function(properties, zoom) {
+            var biozone = properties.Biozone;
+            var color = '#cf52d3';
+            if (biozone == "Infralittoral") {color = '#28d4a6';}
+            return {
+                weight: 2,
+                color: color,
+                fillColor: color,
+                fillOpacity: 1,
+                fill: true
+
+            }
+        },
+        // A function for styling features dynamically, depending on their
+        // properties, the map's zoom level, and the layer's geometry
+        // dimension (point, line, polygon)
+        water: function(properties, zoom, geometryDimension) {
+          if (geometryDimension === 1) {   // point
+              return ({
+                        radius: 5,
+                        color: '#cf52d3',
+                    });
+          }
+
+          if (geometryDimension === 2) {   // line
+                    return ({
+                        weight: 1,
+                        color: '#cf52d3',
+                        dashArray: '2, 6',
+                        fillOpacity: 1
+                    });
+          }
+
+          if (geometryDimension === 3) {   // polygon
+              return ({
+                        weight: 1,
+                        fillColor: '#ce19d4',
+                        fillOpacity: 1,
+                        fill: true
+                    });
+          }
+        },
+        // An 'icon' option means that a L.Icon will be used
+        place: {
+            icon: new L.Icon.Default()
+        },
+        road: []
+      },
+      getFeatureId: function(f) {
+                return f;
+            }
+
+    };
+
+    // L.vectorGrid.protobuf('http://127.0.0.1:8080/v1/styles/osm-bright-gl-style@1.0.0/style.json?fonts=fonts-gl@1.0.0&tiles=mytiles@1.0.0', {
+    //   vectorTileOptions,
+    // }).addTo(mymap);
+
+    var pbfLayer=L.vectorGrid.protobuf('http://127.0.0.1:8080/v1/tiles/mytiles@1.0.0/{z}/{x}/{y}.mvt',vectorTileOptions)
+    // .on('click',function(e) {
+    //     console.log(e.layer);
+    //     L.DomEvent.stop(e);
+    // })
+    pbfLayer.on('click', function(e) {
+      if (e.layer){
+        popup.setContent(e.layer.properties.routes)
+      }
+    }).addTo(mymap);
+
+    // L.vectorGrid.protobuf('http://127.0.0.1:8080/v1/tiles/mytiles@1.0.0/{z}/{x}/{y}.mvt', {
+    //   vectorTileOptions,
+    // }).addTo(mymap);
+
+    </script>
+  </body>
+</html>

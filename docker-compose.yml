@@ -1,0 +1,55 @@
+version: '3'
+
+services:
+  titiler-uvicorn:
+    # See https://github.com/developmentseed/titiler/discussions/387
+    platform: linux/amd64
+    image: docker-repo.bodc.me/oceaninfo/imfe-pilot/titiler-uvicorn:latest
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.uvicorn
+    ports:
+      - "8083:8083"
+    env_file:
+      - .env
+    environment:
+      # Application
+      - HOST=0.0.0.0
+      - PORT=8083
+      # Uvicorn
+      # http://www.uvicorn.org/settings/#production
+      - WEB_CONCURRENCY=1
+      # GDAL config
+      - CPL_TMPDIR=/tmp
+      # GDAL_CACHEMAX: Default GDAL block cache. The value can be either
+      # in Mb, bytes or percent of the physical RAM. Recommended: 200 (200Mb)
+      - GDAL_CACHEMAX=200
+      - GDAL_INGESTED_BYTES_AT_OPEN=32768
+      - GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
+      - GDAL_HTTP_MERGE_CONSECUTIVE_RANGES=YES
+      - GDAL_HTTP_MULTIPLEX=YES
+      - GDAL_HTTP_VERSION=2
+      # GDAL_BAND_BLOCK_CACHE: https://gdal.org/development/rfc/rfc26_blockcache.html
+      - GDAL_BAND_BLOCK_CACHE=HASHSET
+      - PYTHONWARNINGS=ignore
+      # CPL_VSIL_CURL_CACHE_SIZE: A global least-recently-used cache shared
+      # among all downloaded content and may be reused after a file handle
+      # has been closed and reopen. Recommended: 200000000 (200Mb)
+      - CPL_VSIL_CURL_CACHE_SIZE=200000000
+      - VSI_CACHE=TRUE
+      # VSI_CACHE_SIZE: The size of the above VSI cache in bytes per-file
+      # handle.If you open a VRT with 10 files and your VSI_CACHE_SIZE is
+      # 10 bytes, the total cache memory usage would be 100 bytes. The cache
+      # is RAM based and the content of the cache is discarded when the file
+      # handle is closed.
+      - VSI_CACHE_SIZE=5000000
+  mbtiles:
+    image: docker-repo.bodc.me/oceaninfo/imfe-pilot/mbtiles:latest
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.mbtiles
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
+
